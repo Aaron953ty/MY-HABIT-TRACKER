@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Neon Habit Tracker - Final</title>
+    <style>
+        :root {
+            --bg: #0a0a0a;
+            --card: #161616;
+            --text: #ffffff;
+            --accent: #48bb78;
+            --neon-red: #ff004c;
+            --neon-blue: #00d2ff;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* --- THE CIRCLING NEON BORDER --- */
+        .outer-frame {
+            position: relative;
+            width: 400px;
+            height: 85vh;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .outer-frame::before {
+            content: '';
+            position: absolute;
+            width: 150%; height: 150%;
+            background: conic-gradient(transparent, var(--neon-red), transparent, var(--neon-blue), transparent);
+            animation: rotate 4s linear infinite;
+        }
+
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .app-container {
+            position: relative;
+            width: calc(100% - 8px);
+            height: calc(100% - 8px);
+            background: var(--card);
+            border-radius: 26px;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        /* --- LIST STYLES --- */
+        #habit-list {
+            margin-top: 20px;
+            width: 100%;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .habit-card {
+            background: #222;
+            padding: 18px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            border: 1px solid #333;
+        }
+
+        .done-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .done-btn.completed { background: #333; color: #777; cursor: default; }
+
+        /* --- MODAL STYLES --- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 10;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal {
+            background: #1e1e1e;
+            padding: 25px;
+            border-radius: 20px;
+            width: 300px;
+            border: 1px solid #444;
+            text-align: center;
+        }
+
+        .habit-select-btn {
+            background: #2a2a2a;
+            color: white;
+            border: 1px solid #444;
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: left;
+            transition: 0.2s;
+        }
+
+        .habit-select-btn:hover { background: #333; border-color: var(--neon-blue); }
+
+        .benefit-tag {
+            background: rgba(0, 210, 255, 0.1);
+            color: var(--neon-blue);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            border: 1px solid rgba(0, 210, 255, 0.3);
+        }
+
+        /* --- BOTTOM CONTROLS --- */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .streak-btn {
+            width: 55px; height: 55px;
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center; align-items: center;
+            cursor: pointer;
+            font-size: 20px;
+            transition: 0.3s;
+        }
+
+        .streak-btn:hover {
+            box-shadow: 0 0 15px var(--neon-red), 0 0 25px var(--neon-red);
+            border-color: var(--neon-red);
+            color: var(--neon-red);
+        }
+
+        .add-btn {
+            width: 65px; height: 65px;
+            background: white;
+            color: black;
+            border-radius: 50%;
+            font-size: 30px;
+            display: flex;
+            justify-content: center; align-items: center;
+            cursor: pointer;
+        }
+
+        .save-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        #party-popup {
+            display: none;
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: #1e1e1e;
+            padding: 30px;
+            border-radius: 20px;
+            border: 2px solid var(--accent);
+            z-index: 100;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="outer-frame">
+        <div class="app-container">
+            <h2 style="margin: 10px 0; letter-spacing: -1px;">Habits<span>.</span></h2>
+            <div id="habit-list"></div>
+
+            <div id="party-popup">
+                <h1>🎉</h1>
+                <h3>Awesome!</h3>
+                <p style="font-size: 13px; color: #aaa;">Repeat in 12 hours.</p>
+                <button class="save-btn" onclick="closeParty()">Continue</button>
+            </div>
+
+            <div class="controls">
+                <div class="streak-btn" onclick="openStreak()">🔥</div>
+                <div class="add-btn" onclick="openAdd()">+</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="add-modal" class="modal-overlay">
+        <div class="modal">
+            <h3>New Habit</h3>
+            <input type="text" id="habit-name" placeholder="Name" style="width:100%; padding:12px; margin-bottom:10px; background:#000; border:1px solid #333; color:#fff; border-radius:8px;">
+            <input type="text" id="habit-duration" placeholder="Duration" style="width:100%; padding:12px; margin-bottom:10px; background:#000; border:1px solid #333; color:#fff; border-radius:8px;">
+            <button class="save-btn" onclick="saveHabit()">Save</button>
+        </div>
+    </div>
+
+    <div id="streak-modal" class="modal-overlay">
+        <div class="modal" id="streak-modal-content">
+            <!-- Content switches between Choice and Detail -->
+        </div>
+    </div>
+
+    <script>
+        let habits = JSON.parse(localStorage.getItem('habits')) || [];
+
+        function openAdd() { document.getElementById('add-modal').style.display = 'flex'; }
+        function closeModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none'); }
+        function closeParty() { document.getElementById('party-popup').style.display = 'none'; }
+
+        function saveHabit() {
+            const name = document.getElementById('habit-name').value;
+            const duration = document.getElementById('habit-duration').value;
+            if(!name || !duration) return;
+            habits.push({ id: Date.now(), name, duration, streak: 0, lastDone: 0 });
+            localStorage.setItem('habits', JSON.stringify(habits));
+            document.getElementById('habit-name').value = '';
+            document.getElementById('habit-duration').value = '';
+            closeModals();
+            render();
+        }
+
+        // --- STREAK LOGIC ---
+        function openStreak() {
+            const modal = document.getElementById('streak-modal');
+            const content = document.getElementById('streak-modal-content');
+            modal.style.display = 'flex';
+            
+            content.innerHTML = `<h3>Choose Habit</h3>`;
+            if (habits.length === 0) {
+                content.innerHTML += `<p style="color:#888">No habits added yet.</p>`;
+            } else {
+                habits.forEach(h => {
+                    content.innerHTML += `<button class="habit-select-btn" onclick="viewDetail(${h.id})">📍 ${h.name}</button>`;
+                });
+            }
+            content.innerHTML += `<button class="save-btn" style="background:#444" onclick="closeModals()">Back</button>`;
+        }
+
+        function viewDetail(id) {
+            const h = habits.find(habit => habit.id === id);
+            const content = document.getElementById('streak-modal-content');
+            
+            // Generate a benefit based on the habit name
+            let benefit = "Consistency builds discipline and long-term mental strength.";
+            const name = h.name.toLowerCase();
+            if(name.includes("run") || name.includes("gym") || name.includes("exercise")) benefit = "Boosts heart health and releases natural endorphins.";
+            if(name.includes("read") || name.includes("study") || name.includes("learn")) benefit = "Sharpens memory and expands your creative thinking.";
+            if(name.includes("meditate") || name.includes("yoga") || name.includes("sleep")) benefit = "Reduces cortisol levels and improves focus.";
+
+            content.innerHTML = `
+                <h2 style="margin-bottom:5px;">${h.name}</h2>
+                <h1 style="color:var(--neon-red); margin:10px 0;">🔥 ${h.streak}</h1>
+                <p>Current Day Streak</p>
+                <div class="benefit-tag"><b>Benefit:</b><br>${benefit}</div>
+                <button class="save-btn" style="margin-top:20px" onclick="openStreak()">Back to List</button>
+            `;
+        }
+
+        function completeHabit(id) {
+            habits = habits.map(h => {
+                if(h.id === id) { h.streak++; h.lastDone = Date.now(); }
+                return h;
+            });
+            localStorage.setItem('habits', JSON.stringify(habits));
+            document.getElementById('party-popup').style.display = 'block';
+            render();
+        }
+
+        function render() {
+            const list = document.getElementById('habit-list');
+            list.innerHTML = '';
+            const now = Date.now();
+            const TWELVE_HOURS = 12 * 60 * 60 * 1000;
+
+            habits.forEach(h => {
+                const isCompleted = (now - h.lastDone) < TWELVE_HOURS;
+                const card = document.createElement('div');
+                card.className = 'habit-card';
+                card.innerHTML = `
+                    <div class="habit-info">
+                        <b>${h.name}</b>
+                        <span style="color:#888; font-size:0.8rem">${h.duration}</span>
+                    </div>
+                    <button class="done-btn ${isCompleted ? 'completed' : ''}" 
+                            onclick="${isCompleted ? '' : `completeHabit(${h.id})`}">
+                        ${isCompleted ? 'Completed' : 'Done'}
+                    </button>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        render();
+    </script>
+</body>
+</html>

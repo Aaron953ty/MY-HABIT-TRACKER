@@ -1,0 +1,138 @@
+// Retrieve habits from local storage, or start with an empty array
+let habits = JSON.parse(localStorage.getItem('habits')) || [];
+
+// Mock database of global users
+const globalUsers = [
+    { name: "Alex P.", streak: 142 },
+    { name: "Sarah J.", streak: 98 },
+    { name: "David K.", streak: 45 },
+    { name: "Emma W.", streak: 21 }
+];
+
+const habitInput = document.getElementById('habitInput');
+const habitList = document.getElementById('habitList');
+const leaderboardList = document.getElementById('leaderboardList');
+
+// Initialize the app
+function init() {
+    renderHabits();
+    renderLeaderboard();
+}
+
+// Save data to local storage
+function saveLocal() {
+    localStorage.setItem('habits', JSON.stringify(habits));
+}
+
+// Add a new habit
+function addHabit() {
+    const text = habitInput.value.trim();
+    if (text === '') return;
+
+    const newHabit = {
+        id: Date.now(),
+        name: text,
+        streak: 0
+    };
+
+    habits.push(newHabit);
+    habitInput.value = '';
+    
+    saveLocal();
+    renderHabits();
+    renderLeaderboard();
+}
+
+// Increment the streak of a specific habit
+function completeHabit(id) {
+    habits = habits.map(habit => {
+        if (habit.id === id) {
+            return { ...habit, streak: habit.streak + 1 };
+        }
+        return habit;
+    });
+    
+    saveLocal();
+    renderHabits();
+    renderLeaderboard();
+}
+
+// Remove a habit entirely
+function deleteHabit(id) {
+    habits = habits.filter(habit => habit.id !== id);
+    saveLocal();
+    renderHabits();
+    renderLeaderboard();
+}
+
+// Calculate your highest streak to place on the leaderboard
+function getMyHighestStreak() {
+    if (habits.length === 0) return 0;
+    return Math.max(...habits.map(h => h.streak));
+}
+
+// Render the user's habit list
+function renderHabits() {
+    habitList.innerHTML = '';
+    
+    if (habits.length === 0) {
+        habitList.innerHTML = '<li style="color: #718096; justify-content:center;">No habits yet. Start tracking!</li>';
+        return;
+    }
+
+    habits.forEach(habit => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+            <div class="habit-info">
+                <span class="habit-name">${habit.name}</span>
+                <span class="streak-count">🔥 ${habit.streak} Day Streak</span>
+            </div>
+            <div class="habit-actions">
+                <button class="btn-check" onclick="completeHabit(${habit.id})">✓</button>
+                <button class="btn-delete" onclick="deleteHabit(${habit.id})">✕</button>
+            </div>
+        `;
+        habitList.appendChild(li);
+    });
+}
+
+// Render the mocked global leaderboard
+function renderLeaderboard() {
+    leaderboardList.innerHTML = '';
+    
+    // Combine mock users with "You" (using your highest current streak)
+    let combinedBoard = [...globalUsers, { name: "You (Top Streak)", streak: getMyHighestStreak(), isMe: true }];
+    
+    // Sort by streak descending
+    combinedBoard.sort((a, b) => b.streak - a.streak);
+    
+    // Take top 5
+    combinedBoard.slice(0, 5).forEach((user, index) => {
+        const li = document.createElement('li');
+        
+        // Highlight the user's row
+        if (user.isMe) {
+            li.style.borderLeft = "4px solid var(--accent)";
+            li.style.background = "#ebf4ff";
+        }
+
+        li.innerHTML = `
+            <div class="leader-info">
+                <span class="leaderboard-rank">#${index + 1}</span>
+                <span class="habit-name">${user.name}</span>
+            </div>
+            <span class="streak-count">🔥 ${user.streak}</span>
+        `;
+        leaderboardList.appendChild(li);
+    });
+}
+
+// Allow pressing 'Enter' to add a habit
+habitInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        addHabit();
+    }
+});
+
+// Run initialization on load
+init();
